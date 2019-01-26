@@ -34,16 +34,16 @@ target_link_libraries(sensors
         ${FFMPEG_LIBRARIES}
 )
 
-add_executable(sensors-player
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+add_executable(sensors-preview
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sensors-preview/main.cpp
 )
 
-target_compile_features(sensors-player
+target_compile_features(sensors-preview
     PUBLIC
         cxx_std_17
 )
 
-target_link_libraries(sensors-player
+target_link_libraries(sensors-preview
     sensors
     ${OpenCV_LIBS}
 )

@@ -55,17 +55,20 @@ class Sensors {
         while (true) {
             size_t consumed = 0;
             std::uint8_t type;
-            if (!try_advance(type, consumed)) goto end_parse;
             double timestamp;
-            if (!try_advance(timestamp, consumed)) goto end_parse;
+
+            if (!advance(type, consumed)) goto end_parse;
+            if (!advance(timestamp, consumed)) goto end_parse;
+
             switch (type) {
             case 0x00: // image
             {
                 std::uint32_t width, height;
-                if (!try_advance(width, consumed)) goto end_parse;
-                if (!try_advance(height, consumed)) goto end_parse;
-                std::vector<std::uint8_t> pixels(width * height);
-                if (!try_advance(pixels, consumed)) goto end_parse;
+                if (!advance(width, consumed)) goto end_parse;
+                if (!advance(height, consumed)) goto end_parse;
+                if (!try_advance_size(width * height, consumed)) goto end_parse;
+                std::vector<std::uint8_t> pixels;
+                advance_size(width * height, consumed, pixels);
                 if (m_image_handler) {
                     (*m_image_handler)(timestamp, width, height, pixels.data());
                 }
@@ -73,9 +76,9 @@ class Sensors {
             case 0x01: // gyroscope
             {
                 double x, y, z;
-                if (!try_advance(x, consumed)) goto end_parse;
-                if (!try_advance(y, consumed)) goto end_parse;
-                if (!try_advance(z, consumed)) goto end_parse;
+                if (!advance(x, consumed)) goto end_parse;
+                if (!advance(y, consumed)) goto end_parse;
+                if (!advance(z, consumed)) goto end_parse;
                 if (m_gyroscope_handler) {
                     (*m_gyroscope_handler)(timestamp, x, y, z);
                 }
@@ -83,9 +86,9 @@ class Sensors {
             case 0x02: // accelerometer
             {
                 double x, y, z;
-                if (!try_advance(x, consumed)) goto end_parse;
-                if (!try_advance(y, consumed)) goto end_parse;
-                if (!try_advance(z, consumed)) goto end_parse;
+                if (!advance(x, consumed)) goto end_parse;
+                if (!advance(y, consumed)) goto end_parse;
+                if (!advance(z, consumed)) goto end_parse;
                 if (m_accelerometer_handler) {
                     (*m_accelerometer_handler)(timestamp, x, y, z);
                 }
@@ -93,9 +96,9 @@ class Sensors {
             case 0x03: // magnetometer
             {
                 double x, y, z;
-                if (!try_advance(x, consumed)) goto end_parse;
-                if (!try_advance(y, consumed)) goto end_parse;
-                if (!try_advance(z, consumed)) goto end_parse;
+                if (!advance(x, consumed)) goto end_parse;
+                if (!advance(y, consumed)) goto end_parse;
+                if (!advance(z, consumed)) goto end_parse;
                 if (m_magnetometer_handler) {
                     (*m_magnetometer_handler)(timestamp, x, y, z);
                 }
@@ -103,8 +106,8 @@ class Sensors {
             case 0x04: // altimeter
             {
                 double pressure, elevation;
-                if (!try_advance(pressure, consumed)) goto end_parse;
-                if (!try_advance(elevation, consumed)) goto end_parse;
+                if (!advance(pressure, consumed)) goto end_parse;
+                if (!advance(elevation, consumed)) goto end_parse;
                 if (m_altimeter_handler) {
                     (*m_altimeter_handler)(timestamp, pressure, elevation);
                 }
@@ -112,43 +115,64 @@ class Sensors {
             case 0x05: // gps
             {
                 double lon, lat, alt;
-                if (!try_advance(lon, consumed)) goto end_parse;
-                if (!try_advance(lat, consumed)) goto end_parse;
-                if (!try_advance(alt, consumed)) goto end_parse;
+                if (!advance(lon, consumed)) goto end_parse;
+                if (!advance(lat, consumed)) goto end_parse;
+                if (!advance(alt, consumed)) goto end_parse;
                 if (m_gps_handler) {
                     (*m_gps_handler)(timestamp, lon, lat, alt);
                 }
             } break;
             case 0x08: // h264
             {
-                static const std::uint8_t annexb[] = {0x00, 0x00, 0x01};
-                std::vector<std::vector<std::uint8_t>> payloads;
+                size_t header_consumed = consumed;
+
                 std::uint32_t sps_len, pps_len;
-                if (!try_advance(sps_len, consumed)) goto end_parse;
+                if (!advance(sps_len, consumed)) goto end_parse;
                 if (sps_len > 0) {
-                    std::vector<std::uint8_t> sps_buf(sps_len);
-                    if (!try_advance(sps_buf, consumed)) goto end_parse;
+                    if (!try_advance_size(sps_len, consumed)) goto end_parse;
+                    consumed += sps_len;
+                }
+                if (!advance(pps_len, consumed)) goto end_parse;
+                if (pps_len > 0) {
+                    if (!try_advance_size(pps_len, consumed)) goto end_parse;
+                    consumed += pps_len;
+                }
+                while (true) {
+                    std::uint32_t nal_len;
+                    if (!advance(nal_len, consumed)) goto end_parse;
+                    if (nal_len == 0) break;
+                    if (!try_advance_size(nal_len, consumed)) goto end_parse;
+                    consumed += nal_len;
+                }
+
+                // begin true decoding
+                static const std::uint8_t annexb[] = {0x00, 0x00, 0x01};
+                consumed = header_consumed;
+                std::vector<std::vector<std::uint8_t>> payloads;
+                advance(sps_len, consumed);
+                if (sps_len > 0) {
+                    std::vector<std::uint8_t> sps_buf;
+                    advance_size(sps_len, consumed, sps_buf);
                     sps_buf.insert(sps_buf.begin(), annexb, annexb + 3);
                     payloads.emplace_back(std::move(sps_buf));
                 }
-                if (!try_advance(pps_len, consumed)) goto end_parse;
+                advance(pps_len, consumed);
                 if (pps_len > 0) {
-                    std::vector<std::uint8_t> pps_buf(pps_len);
-                    if (!try_advance(pps_buf, consumed)) goto end_parse;
+                    std::vector<std::uint8_t> pps_buf;
+                    advance_size(pps_len, consumed, pps_buf);
                     pps_buf.insert(pps_buf.begin(), annexb, annexb + 3);
                     payloads.emplace_back(std::move(pps_buf));
                 }
                 while (true) {
                     std::uint32_t nal_len;
-                    if (!try_advance(nal_len, consumed)) goto end_parse;
-                    if (nal_len == 0) {
-                        break;
-                    }
-                    std::vector<std::uint8_t> nal_buf(nal_len);
-                    if (!try_advance(nal_buf, consumed)) goto end_parse;
+                    advance(nal_len, consumed);
+                    if (nal_len == 0) break;
+                    std::vector<std::uint8_t> nal_buf;
+                    advance_size(nal_len, consumed, nal_buf);
                     nal_buf.insert(nal_buf.begin(), annexb, annexb + 3);
                     payloads.emplace_back(std::move(nal_buf));
                 }
+
                 for (const std::vector<std::uint8_t>& payload : payloads) {
                     h264_decode_payload(timestamp, payload.data(), payload.size());
                 }
@@ -167,8 +191,16 @@ class Sensors {
     }
 
   private:
+    bool try_advance_size(size_t size, size_t consumed) const {
+        if (buffer.size() >= consumed + size) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     template <typename T>
-    bool try_advance(T& value, size_t& consumed) const {
+    bool advance(T& value, size_t& consumed) const {
         if (buffer.size() >= consumed + sizeof(value)) {
             value = *(const T*)(buffer.data() + consumed);
             consumed += sizeof(value);
@@ -178,17 +210,20 @@ class Sensors {
         }
     }
 
-    bool try_advance(std::vector<unsigned char>& buf, size_t& consumed) const {
-        if (buffer.size() >= consumed + buf.size()) {
-            memcpy(buf.data(), buffer.data() + consumed, buf.size());
-            consumed += buf.size();
+    bool advance_size(size_t size, size_t& consumed, std::vector<std::uint8_t>& buf) const {
+        if (buffer.size() >= consumed + size) {
+            buf.resize(size);
+            memcpy(buf.data(), buffer.data() + consumed, size);
+            consumed += size;
             return true;
         } else {
+            error("fatal error: buffer overrun.");
+            exit(EXIT_FAILURE);
             return false;
         }
     }
 
-    void error(const char* msg) {
+    void error(const char* msg) const {
         if (m_error_handler) {
             (*m_error_handler)(msg);
         }
