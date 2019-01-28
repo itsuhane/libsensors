@@ -4,6 +4,7 @@
 #include <vector>
 
 #if defined(__APPLE__) && __APPLE__
+#include "TargetConditionals.h"
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 #define LIBSENSORS_IOS
 #endif
