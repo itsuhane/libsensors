@@ -3,10 +3,19 @@
 #include <memory>
 #include <vector>
 
+#if defined(__APPLE__) && __APPLE__
+#include "TargetConditionals.h"
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#define LIBSENSORS_IOS
+#endif
+#endif
+
+#ifndef LIBSENSORS_IOS
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
 }
+#endif
 
 class Sensors {
   public:
@@ -241,6 +250,7 @@ class Sensors {
     std::vector<unsigned char> buffer;
 
   public:
+#ifndef LIBSENSORS_IOS
     void init() {
         ::av_log_set_level(AV_LOG_QUIET);
         codec = ::avcodec_find_decoder(AV_CODEC_ID_H264);
@@ -310,8 +320,16 @@ class Sensors {
             context = nullptr;
         }
     }
-
+#else
+    void init() {
+        has_init = true;
+    }
+    void deinit() {
+        has_init = false;
+    }
+#endif
   private:
+#ifndef LIBSENSORS_IOS
     void h264_decode_payload(double timestamp, const void* payload, size_t payload_size) {
         if (!has_init) {
             init();
@@ -370,6 +388,17 @@ class Sensors {
     AVCodecParserContext* parser = nullptr;
     AVFrame* picture = nullptr;
     AVPacket* packet = nullptr;
+#else
+    void h264_decode_payload(double timestamp, const void* payload, size_t payload_size) {
+        if (!has_init) {
+            init();
+            if (!has_init) {
+                error("cannot init libsensors.");
+            }
+        }
+        error("h264 decoding is not supported on iOS.");
+    }
+#endif
     bool has_init = false;
 };
 
