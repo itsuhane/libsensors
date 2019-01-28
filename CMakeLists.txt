@@ -47,3 +47,16 @@ target_link_libraries(sensors-preview
     sensors
     ${OpenCV_LIBS}
 )
+
+add_executable(sensors-decode
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sensors-decode/main.cpp
+)
+
+target_compile_features(sensors-decode
+    PUBLIC
+        cxx_std_17
+)
+
+target_link_libraries(sensors-decode
+    sensors
+)

@@ -242,7 +242,7 @@ class Sensors {
 
   public:
     void init() {
-        av_log_set_level(AV_LOG_QUIET);
+        ::av_log_set_level(AV_LOG_QUIET);
         codec = ::avcodec_find_decoder(AV_CODEC_ID_H264);
         if (!codec) {
             error("cannot find h264 decoder.");

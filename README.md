@@ -20,8 +20,20 @@ Preview real-time data stream from TCP connection:
 nc 10.10.10.100 5959 | sensors-preview
 ```
 
-Recording the stream while keeping a preview window open:
+Record the stream while keeping a preview window open:
 
 ```bash
 nc 10.10.10.100 5959 | tee record.sensors >(sensors-preview) > /dev/null
+```
+
+Decode a compressed stream to uncompressed stream, then play:
+
+```bash
+nc 10.10.10.100 5959 | sensors-decode | sensors-preview
+```
+
+Receive a compressed stream, uncompress and save to record file. At the same time, keep a preview window.
+
+```bash
+nc 10.10.10.100 5959 | tee >(sensors-decode > record.sensors) >(sensors-preview) >/dev/null
 ```
