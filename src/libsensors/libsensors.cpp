@@ -123,12 +123,14 @@ class Sensors {
             } break;
             case 0x05: // gps
             {
-                double lon, lat, alt;
+                double lon, lat, alt, hacc, vacc;
                 if (!advance(lon, consumed)) goto end_parse;
                 if (!advance(lat, consumed)) goto end_parse;
                 if (!advance(alt, consumed)) goto end_parse;
+                if (!advance(hacc, consumed)) goto end_parse;
+                if (!advance(vacc, consumed)) goto end_parse;
                 if (m_gps_handler) {
-                    (*m_gps_handler)(timestamp, lon, lat, alt);
+                    (*m_gps_handler)(timestamp, lon, lat, alt, hacc, vacc);
                 }
             } break;
             case 0x08: // h264

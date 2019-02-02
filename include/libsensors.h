@@ -7,7 +7,7 @@ typedef void (*gyroscope_handler)(double t, double x, double y, double z);
 typedef void (*accelerometer_handler)(double t, double x, double y, double z);
 typedef void (*magnetometer_handler)(double t, double x, double y, double z);
 typedef void (*altimeter_handler)(double t, double pressure, double elevation);
-typedef void (*gps_handler)(double t, double longitude, double latitude, double altitude);
+typedef void (*gps_handler)(double t, double longitude, double latitude, double altitude, double horizontal_accuracy, double vertical_accuracy);
 typedef void (*error_handler)(const char* error_message);
 
 void sensors_image_handler_set(image_handler h);
