@@ -49,13 +49,15 @@ void on_altimeter(double t, double pressure, double elevation) {
     fwrite(&elevation, sizeof(elevation), 1, stdout);
 }
 
-void on_gps(double t, double longitude, double latitude, double altitude) {
+void on_gps(double t, double longitude, double latitude, double altitude, double horizontal_accuracy, double vertical_accuracy) {
     const std::uint8_t type = 0x05;
     fwrite(&type, sizeof(type), 1, stdout);
     fwrite(&t, sizeof(t), 1, stdout);
     fwrite(&longitude, sizeof(longitude), 1, stdout);
     fwrite(&latitude, sizeof(latitude), 1, stdout);
     fwrite(&altitude, sizeof(altitude), 1, stdout);
+    fwrite(&horizontal_accuracy, sizeof(horizontal_accuracy), 1, stdout);
+    fwrite(&vertical_accuracy, sizeof(vertical_accuracy), 1, stdout);
 }
 }
 
